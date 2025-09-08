@@ -415,17 +415,22 @@ public class VideoServerUtils {
         return enhancedUrl.toString();
     }
     
-    private static String addVidFastProParameters(String url) {
-        StringBuilder enhancedUrl = new StringBuilder(url);
-        if (!url.contains("?")) {
-            enhancedUrl.append("?");
-        } else {
-            enhancedUrl.append("&");
-        }
-        enhancedUrl.append("autoPlay=true&muted=0&controls=1");
-        Log.d(TAG, "Enhanced VidFast.pro URL: " + enhancedUrl.toString());
-        return enhancedUrl.toString();
+    // In VideoServerUtils.java, update the addVidFastProParameters method
+private static String addVidFastProParameters(String url) {
+    StringBuilder enhancedUrl = new StringBuilder(url);
+    if (!url.contains("?")) {
+        enhancedUrl.append("?");
+    } else {
+        enhancedUrl.append("&");
     }
+    // Use simpler parameters that VidFast.pro accepts
+    enhancedUrl.append("autoplay=1")
+              .append("&muted=0")
+              .append("&controls=1");
+    
+    Log.d(TAG, "Enhanced VidFast.pro URL: " + enhancedUrl.toString());
+    return enhancedUrl.toString();
+}
 
     private static String add2embedStreamParameters(String url) {
         StringBuilder enhancedUrl = new StringBuilder(url);

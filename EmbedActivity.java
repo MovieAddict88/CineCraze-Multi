@@ -1133,10 +1133,67 @@ public class EmbedActivity extends AppCompatActivity {
                         injectStreamingNowFix(view);
                     }
                 }, 2000); // 2 second delay
+            } else {
+                // Generic fallback for any other page to attempt autoplay
+                Log.d(TAG, "No specific fix found, applying generic autoplay script as a fallback.");
+                injectGenericEmbedFix(view);
             }
 
             super.onPageFinished(view, url);
-                }
+        }
+
+        /**
+         * Returns a robust JavaScript snippet for finding and autoplaying videos.
+         * This script will attempt multiple strategies to ensure playback.
+         */
+        private String getAutoPlayJs() {
+            return "javascript:" +
+                "(() => {" +
+                "  console.log('CineCraze: Initiating autoplay sequence...');" +
+                "  const videos = document.querySelectorAll('video');" +
+                "  let videoPlayed = false;" +
+                "  " +
+                "  const playVideo = (video) => {" +
+                "    if (!video) return;" +
+                "    video.autoplay = true;" +
+                "    video.muted = false;" + // Attempt to play unmuted first
+                "    video.controls = true;" +
+                "    video.playsInline = true;" +
+                "    " +
+                "    video.play().then(() => {" +
+                "      console.log('CineCraze: Autoplay successful.');" +
+                "      videoPlayed = true;" +
+                "    }).catch((error) => {" +
+                "      console.log('CineCraze: Unmuted autoplay failed, trying muted autoplay...');" +
+                "      video.muted = true;" + // Mute and try again
+                "      video.play().then(() => {" +
+                "        console.log('CineCraze: Muted autoplay successful. Unmuting in 2s.');" +
+                "        videoPlayed = true;" +
+                "        setTimeout(() => { video.muted = false; }, 2000);" +
+                "      }).catch((err) => {" +
+                "        console.error('CineCraze: Muted autoplay also failed.', err);" +
+                "      });" +
+                "    });" +
+                "  };" +
+                "  " +
+                "  if (videos.length > 0) {" +
+                "    console.log('CineCraze: Found ' + videos.length + ' video elements.');" +
+                "    videos.forEach(playVideo);" +
+                "  }" +
+                "  " +
+                "  setTimeout(() => {" +
+                "    if (videoPlayed) return;" +
+                "    console.log('CineCraze: Video not played after 1s, trying fallback: clicking play buttons.');" +
+                "    const playButtons = document.querySelectorAll('[class*=\"play\"], [id*=\"play\"], [aria-label*=\"Play\"]');" +
+                "    if (playButtons.length > 0) {" +
+                "      console.log('CineCraze: Found ' + playButtons.length + ' potential play buttons.');" +
+                "      playButtons.forEach(btn => btn.click());" +
+                "    } else {" +
+                "      console.log('CineCraze: No play buttons found for fallback.');" +
+                "    }" +
+                "  }, 1000);" +
+                "})();";
+        }
 
         /**
          * Generic embed fix: remove overlays/ads, force video/iframe visible, autoplay
@@ -1147,14 +1204,11 @@ public class EmbedActivity extends AppCompatActivity {
                 "  console.log('Applying generic embed fix...');" +
                 "  var selectors = [\"[class*=ad]\",\"[id*=ad]\",\"[class*=ads]\",\"[id*=ads]\",\"[class*=overlay]\",\"[class*=popup]\",\"[class*=modal]\"];" +
                 "  selectors.forEach(function(s){document.querySelectorAll(s).forEach(function(e){e.style.display='none';e.style.visibility='hidden';e.style.opacity='0';e.style.pointerEvents='none';});});" +
-                "  var videos = document.querySelectorAll('video');" +
-                "  videos.forEach(function(v){v.style.display='block';v.style.visibility='visible';v.style.opacity='1';v.style.width='100%';v.style.height='100%';v.controls=true;v.autoplay=true;v.muted=false;v.playsInline=true;});" +
-                "  var iframes = document.querySelectorAll('iframe');" +
-                "  iframes.forEach(function(f){f.style.display='block';f.style.visibility='visible';f.style.opacity='1';f.style.width='100%';f.style.height='100%';f.style.border='none';});" +
-                "  setTimeout(function(){videos.forEach(function(v){if(v.paused){v.play().catch(()=>{});}});}, 800);" +
+                "  document.querySelectorAll('video, iframe').forEach(function(el){el.style.display='block';el.style.visibility='visible';el.style.opacity='1';el.style.width='100%';el.style.height='100%';el.style.border='none';});" +
                 "  console.log('Generic embed fix applied');" +
                 "} catch(e) { console.log('Generic embed fix error: ' + e.message); }";
             view.evaluateJavascript(jsCode, null);
+            view.evaluateJavascript(getAutoPlayJs(), null);
         }
  
          /**
@@ -1241,16 +1295,6 @@ public class EmbedActivity extends AppCompatActivity {
                 "    }" +
                 "  }" +
                 "  " +
-                "  // Force autoplay on video elements" +
-                "  for(var i = 0; i < videos.length; i++) {" +
-                "    videos[i].autoplay = true;" +
-                "    videos[i].muted = false;" +
-                "    videos[i].controls = true;" +
-                "    videos[i].loop = false;" +
-                "    videos[i].preload = 'auto';" +
-                "    console.log('Set autoplay for video element ' + i);" +
-                "  }" +
-                "  " +
                 "  // Disable any ad-related scripts" +
                 "  var scripts = document.querySelectorAll('script');" +
                 "  for(var i = 0; i < scripts.length; i++) {" +
@@ -1265,7 +1309,8 @@ public class EmbedActivity extends AppCompatActivity {
                 "  console.log('SuperEmbed fix error: ' + e.message);" +
                 "}";
 
-            view.evaluateJavascript(jsCode, new ValueCallback<String>() {
+            view.evaluateJavascript(jsCode, null);
+            view.evaluateJavascript(getAutoPlayJs(), new ValueCallback<String>() {
                 @Override
                 public void onReceiveValue(String value) {
                     Log.d(TAG, "SuperEmbed fix with enhanced ad blocking applied: " + value);
@@ -1314,11 +1359,6 @@ public class EmbedActivity extends AppCompatActivity {
                 "    videos[i].style.width = '100%';" +
                 "    videos[i].style.height = '100%';" +
                 "    videos[i].style.backgroundColor = 'black';" +
-                "    videos[i].autoplay = true;" +
-                "    videos[i].muted = false;" +
-                "    videos[i].controls = true;" +
-                "    videos[i].loop = false;" +
-                "    videos[i].preload = 'auto';" +
                 "    console.log('Fixed video element ' + i);" +
                 "  }" +
                 "  " +
@@ -1339,7 +1379,8 @@ public class EmbedActivity extends AppCompatActivity {
                 "  console.log('YouTube fix error: ' + e.message);" +
                 "}";
 
-            view.evaluateJavascript(jsCode, new ValueCallback<String>() {
+            view.evaluateJavascript(jsCode, null);
+            view.evaluateJavascript(getAutoPlayJs(), new ValueCallback<String>() {
                 @Override
                 public void onReceiveValue(String value) {
                     Log.d(TAG, "YouTube fix applied: " + value);
@@ -1465,8 +1506,8 @@ public class EmbedActivity extends AppCompatActivity {
                 "} catch(e) {" +
                 "  console.log('Google Drive fix error: ' + e.message);" +
                 "}";
-
-            view.evaluateJavascript(jsCode, new ValueCallback<String>() {
+            view.evaluateJavascript(jsCode, null);
+            view.evaluateJavascript(getAutoPlayJs(), new ValueCallback<String>() {
                 @Override
                 public void onReceiveValue(String value) {
                     Log.d(TAG, "Improved Google Drive video player fix applied: " + value);
@@ -1643,7 +1684,8 @@ public class EmbedActivity extends AppCompatActivity {
                 "  console.log('Mega.nz fix error: ' + e.message);" +
                 "}";
 
-            view.evaluateJavascript(jsCode, new ValueCallback<String>() {
+            view.evaluateJavascript(jsCode, null);
+            view.evaluateJavascript(getAutoPlayJs(), new ValueCallback<String>() {
                 @Override
                 public void onReceiveValue(String value) {
                     Log.d(TAG, "Improved Mega.nz video player fix applied: " + value);
@@ -1734,11 +1776,6 @@ public class EmbedActivity extends AppCompatActivity {
                 "    videos[i].style.width = '100%';" +
                 "    videos[i].style.height = '100%';" +
                 "    videos[i].style.backgroundColor = 'black';" +
-                "    videos[i].autoplay = true;" +
-                "    videos[i].muted = false;" +
-                "    videos[i].controls = true;" +
-                "    videos[i].loop = false;" +
-                "    videos[i].preload = 'auto';" +
                 "    videos[i].playsInline = true;" +
                 "    videos[i].webkitPlaysinline = true;" +
                 "    console.log('Fixed video element ' + i);" +
@@ -1860,18 +1897,6 @@ public class EmbedActivity extends AppCompatActivity {
                 "    }" +
                 "  }" +
                 "  " +
-                "  // Force autoplay for any video elements" +
-                "  setTimeout(function() {" +
-                "    var videos = document.querySelectorAll('video');" +
-                "    for(var i = 0; i < videos.length; i++) {" +
-                "      if(videos[i].paused) {" +
-                "        videos[i].play().catch(function(e) {" +
-                "          console.log('Autoplay failed for video ' + i + ': ' + e.message);" +
-                "        });" +
-                "      }" +
-                "    }" +
-                "  }, 1000);" +
-                "  " +
                 "  // Additional aggressive fix - look for any hidden elements that might be video players" +
                 "  var allElements = document.querySelectorAll('*');" +
                 "  for(var i = 0; i < allElements.length; i++) {" +
@@ -1894,7 +1919,8 @@ public class EmbedActivity extends AppCompatActivity {
                 "  console.log('MultiEmbed fix error: ' + e.message);" +
                 "}";
 
-            view.evaluateJavascript(jsCode, new ValueCallback<String>() {
+            view.evaluateJavascript(jsCode, null);
+            view.evaluateJavascript(getAutoPlayJs(), new ValueCallback<String>() {
                 @Override
                 public void onReceiveValue(String value) {
                     Log.d(TAG, "MultiEmbed fix with enhanced ad blocking and redirect handling applied: " + value);
@@ -1958,11 +1984,6 @@ public class EmbedActivity extends AppCompatActivity {
                 "    videos[i].style.width = '100%';" +
                 "    videos[i].style.height = '100%';" +
                 "    videos[i].style.backgroundColor = 'black';" +
-                "    videos[i].autoplay = true;" +
-                "    videos[i].muted = false;" +
-                "    videos[i].controls = true;" +
-                "    videos[i].loop = false;" +
-                "    videos[i].preload = 'auto';" +
                 "    videos[i].playsInline = true;" +
                 "    videos[i].webkitPlaysinline = true;" +
                 "    console.log('Fixed video element ' + i);" +
@@ -2015,18 +2036,6 @@ public class EmbedActivity extends AppCompatActivity {
                 "    }" +
                 "  }" +
                 "  " +
-                "  // Force autoplay for any video elements" +
-                "  setTimeout(function() {" +
-                "    var videos = document.querySelectorAll('video');" +
-                "    for(var i = 0; i < videos.length; i++) {" +
-                "      if(videos[i].paused) {" +
-                "        videos[i].play().catch(function(e) {" +
-                "          console.log('Autoplay failed for video ' + i + ': ' + e.message);" +
-                "        });" +
-                "      }" +
-                "    }" +
-                "  }, 1000);" +
-                "  " +
                 "  // Additional aggressive fix - look for any hidden elements that might be video players" +
                 "  var allElements = document.querySelectorAll('*');" +
                 "  for(var i = 0; i < allElements.length; i++) {" +
@@ -2049,7 +2058,8 @@ public class EmbedActivity extends AppCompatActivity {
                 "  console.log('StreamingNow.mov fix error: ' + e.message);" +
                 "}";
 
-            view.evaluateJavascript(jsCode, new ValueCallback<String>() {
+            view.evaluateJavascript(jsCode, null);
+            view.evaluateJavascript(getAutoPlayJs(), new ValueCallback<String>() {
                 @Override
                 public void onReceiveValue(String value) {
                     Log.d(TAG, "StreamingNow.mov countdown ad fix applied: " + value);
