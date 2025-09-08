@@ -516,7 +516,7 @@ private static String addVidFastProParameters(String url) {
      * Add Google Drive parameters for better embedding
      */
     /**
- * Add Google Drive parameters for better embedding
+ * Add Google Drive parameters for better embedding with minimal UI
  */
 private static String addGoogleDriveParameters(String url) {
     String fileId = extractGoogleDriveFileId(url);
@@ -525,16 +525,31 @@ private static String addGoogleDriveParameters(String url) {
     // Convert to embed URL with enhanced parameters to hide interface elements
     String embedUrl = GOOGLE_DRIVE_BASE + "/file/d/" + fileId + "/preview";
 
-    // Add parameters to hide Google Drive interface elements
+    // Add parameters to create the cleanest possible video player
     StringBuilder enhancedUrl = new StringBuilder(embedUrl);
     enhancedUrl.append("?usp=sharing")
               .append("&rm=minimal")
               .append("&ui=2")
               .append("&chrome=false")
               .append("&widget=true")
-              .append("&embedded=true");
+              .append("&embedded=true")
+              .append("&autoplay=1")
+              .append("&muted=0")
+              .append("&controls=0")  // Disable native controls to prevent conflicts
+              .append("&playsinline=1")
+              .append("&modestbranding=1")
+              .append("&rel=0")
+              .append("&showinfo=0")
+              .append("&iv_load_policy=3")
+              .append("&fs=1")
+              .append("&cc_load_policy=0")
+              .append("&start=0")
+              .append("&end=0")
+              .append("&loop=0")
+              .append("&enablejsapi=1")
+              .append("&origin=" + encodeUrl("https://drive.google.com"));
 
-    Log.d(TAG, "Enhanced Google Drive URL for pure video player: " + enhancedUrl.toString());
+    Log.d(TAG, "Enhanced Google Drive URL for professional video player: " + enhancedUrl.toString());
     return enhancedUrl.toString();
 }
 

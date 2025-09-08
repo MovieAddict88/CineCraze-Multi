@@ -1388,17 +1388,15 @@ public class EmbedActivity extends AppCompatActivity {
             });
         }
 /**
- * Inject JavaScript to optimize Google Drive video player experience
- * with proper controller handling
+ * Inject JavaScript to create a professional, organized Google Drive video player UI
+ * Fixes overlapping controls and creates a clean, single control bar
  */
 private void injectGoogleDriveFix(WebView view) {
     String jsCode = "javascript:" +
         "try {" +
-        "  console.log('Applying improved Google Drive video player fix...');" +
+        "  console.log('Applying professional Google Drive video player UI fix...');" +
         "  " +
-        "  // Strategy: Focus on preserving the video controller while removing干扰元素" +
-        "  " +
-        "  // Hide only specific Google Drive UI elements that interfere with video" +
+        "  // Step 1: Hide ALL Google Drive interface elements that interfere" +
         "  var interfaceSelectors = [" +
         "    '[data-target=\"drive.web.downloadDialog\"]'," +
         "    '[data-target=\"drive.web.shareDialog\"]'," +
@@ -1410,32 +1408,36 @@ private void injectGoogleDriveFix(WebView view) {
         "    '[jsaction*=\"drive.web\"]'," +
         "    '.ndfHFb-c4YZDc-Wrql6b'," + // Drive interface containers
         "    '.a-s-fa-Ha-pa'," + // Drive action buttons
-        "    '.a-s-tb-Ha-pa'," + // Drive toolbar (but not video controls)
+        "    '.a-s-tb-Ha-pa'," + // Drive toolbar
         "    '.Lvn8L'," + // Drive header
         "    '.gb_uc'," + // Google header
         "    '.gb_Sc'," + // Google notifications
         "    '.drive-viewer-pageless-unloaded'," +
         "    '[role=\"banner\"]'," +
-        "    '[role=\"navigation\"]'" +
+        "    '[role=\"navigation\"]'," +
+        "    // Hide Google Drive's native video controls to prevent conflicts" +
+        "    '[class*=\"video-controls\"]'," +
+        "    '[class*=\"player-controls\"]'," +
+        "    '[class*=\"media-controls\"]'," +
+        "    '.ytp-chrome-top'," +
+        "    '.ytp-chrome-bottom'," +
+        "    '.ytp-progress-bar-container'," +
+        "    '.ytp-title'," +
+        "    '.ytp-chrome-controls'" +
         "  ];" +
         "  " +
         "  interfaceSelectors.forEach(function(selector) {" +
         "    var elements = document.querySelectorAll(selector);" +
         "    for(var i = 0; i < elements.length; i++) {" +
-        "      // Don't hide elements that are part of video controls" +
-        "      if (!elements[i].closest('.video-controls') && " +
-        "          !elements[i].closest('[class*=\"control\"]') && " +
-        "          !elements[i].closest('[class*=\"player\"]')) {" +
-        "        elements[i].style.display = 'none';" +
-        "        elements[i].style.visibility = 'hidden';" +
-        "        elements[i].style.opacity = '0';" +
-        "        elements[i].style.pointerEvents = 'none';" +
-        "        elements[i].style.zIndex = '-9999';" +
-        "      }" +
+        "      elements[i].style.display = 'none' !important;" +
+        "      elements[i].style.visibility = 'hidden' !important;" +
+        "      elements[i].style.opacity = '0' !important;" +
+        "      elements[i].style.pointerEvents = 'none' !important;" +
+        "      elements[i].style.zIndex = '-9999' !important;" +
         "    }" +
         "  });" +
         "  " +
-        "  // Enhance video player elements but preserve controller" +
+        "  // Step 2: Enhance video elements and disable native controls" +
         "  var videos = document.querySelectorAll('video');" +
         "  console.log('Found ' + videos.length + ' video elements');" +
         "  for(var i = 0; i < videos.length; i++) {" +
@@ -1447,7 +1449,7 @@ private void injectGoogleDriveFix(WebView view) {
         "    video.style.height = '100%';" +
         "    video.style.objectFit = 'contain';" +
         "    video.style.backgroundColor = 'black';" +
-        "    video.controls = true;" + // Ensure controls are enabled
+        "    video.controls = false;" + // Disable native controls to prevent conflicts
         "    video.preload = 'auto';" +
         "    video.playsInline = true;" +
         "    video.webkitPlaysinline = true;" +
@@ -1463,7 +1465,7 @@ private void injectGoogleDriveFix(WebView view) {
         "    console.log('Enhanced video element ' + i);" +
         "  }" +
         "  " +
-        "  // Handle iframes" +
+        "  // Step 3: Handle iframes" +
         "  var iframes = document.querySelectorAll('iframe[src*=\"drive.google.com\"]');" +
         "  for(var i = 0; i < iframes.length; i++) {" +
         "    var iframe = iframes[i];" +
@@ -1473,7 +1475,7 @@ private void injectGoogleDriveFix(WebView view) {
         "    iframe.style.backgroundColor = 'black';" +
         "  }" +
         "  " +
-        "  // Optimize body styling for video playback" +
+        "  // Step 4: Optimize body styling for clean video playback" +
         "  document.body.style.backgroundColor = 'black';" +
         "  document.body.style.margin = '0';" +
         "  document.body.style.padding = '0';" +
@@ -1484,100 +1486,312 @@ private void injectGoogleDriveFix(WebView view) {
         "  document.documentElement.style.padding = '0';" +
         "  document.documentElement.style.overflow = 'hidden';" +
         "  " +
-        "  // Add custom CSS to override Drive styles but preserve controller" +
+        "  // Step 5: Create professional custom video controls" +
+        "  var customControlsHTML = `" +
+        "    <div id=\"cinecraze-video-controls\" style=\"" +
+        "      position: fixed;" +
+        "      bottom: 0;" +
+        "      left: 0;" +
+        "      right: 0;" +
+        "      height: 60px;" +
+        "      background: linear-gradient(transparent, rgba(0,0,0,0.8));" +
+        "      display: flex;" +
+        "      align-items: center;" +
+        "      padding: 0 15px;" +
+        "      z-index: 9999;" +
+        "      opacity: 0;" +
+        "      transition: opacity 0.3s ease;" +
+        "    \">" +
+        "      <button id=\"cinecraze-play-btn\" style=\"" +
+        "        background: white;" +
+        "        border: none;" +
+        "        border-radius: 50%;" +
+        "        width: 40px;" +
+        "        height: 40px;" +
+        "        display: flex;" +
+        "        align-items: center;" +
+        "        justify-content: center;" +
+        "        margin-right: 15px;" +
+        "        cursor: pointer;" +
+        "        box-shadow: 0 2px 8px rgba(0,0,0,0.3);" +
+        "      \">" +
+        "        <div id=\"cinecraze-play-icon\" style=\"" +
+        "          width: 0;" +
+        "          height: 0;" +
+        "          border-left: 12px solid #333;" +
+        "          border-top: 8px solid transparent;" +
+        "          border-bottom: 8px solid transparent;" +
+        "          margin-left: 3px;" +
+        "        \"></div>" +
+        "      </button>" +
+        "      " +
+        "      <button id=\"cinecraze-rewind-btn\" style=\"" +
+        "        background: rgba(255,255,255,0.2);" +
+        "        border: none;" +
+        "        border-radius: 50%;" +
+        "        width: 35px;" +
+        "        height: 35px;" +
+        "        color: white;" +
+        "        font-size: 12px;" +
+        "        margin-right: 10px;" +
+        "        cursor: pointer;" +
+        "      \">-10</button>" +
+        "      " +
+        "      <div id=\"cinecraze-time-display\" style=\"" +
+        "        color: white;" +
+        "        font-size: 14px;" +
+        "        margin-right: 15px;" +
+        "        min-width: 100px;" +
+        "      \">00:00 / 00:00</div>" +
+        "      " +
+        "      <div id=\"cinecraze-progress-container\" style=\"" +
+        "        flex: 1;" +
+        "        height: 4px;" +
+        "        background: rgba(255,255,255,0.3);" +
+        "        border-radius: 2px;" +
+        "        margin-right: 15px;" +
+        "        position: relative;" +
+        "        cursor: pointer;" +
+        "      \">" +
+        "        <div id=\"cinecraze-progress-bar\" style=\"" +
+        "          height: 100%;" +
+        "          background: white;" +
+        "          border-radius: 2px;" +
+        "          width: 0%;" +
+        "          transition: width 0.1s ease;" +
+        "        \"></div>" +
+        "      </div>" +
+        "      " +
+        "      <button id=\"cinecraze-forward-btn\" style=\"" +
+        "        background: rgba(255,255,255,0.2);" +
+        "        border: none;" +
+        "        border-radius: 50%;" +
+        "        width: 35px;" +
+        "        height: 35px;" +
+        "        color: white;" +
+        "        font-size: 12px;" +
+        "        margin-right: 10px;" +
+        "        cursor: pointer;" +
+        "      \">+10</button>" +
+        "      " +
+        "      <button id=\"cinecraze-volume-btn\" style=\"" +
+        "        background: rgba(255,255,255,0.2);" +
+        "        border: none;" +
+        "        border-radius: 50%;" +
+        "        width: 35px;" +
+        "        height: 35px;" +
+        "        color: white;" +
+        "        margin-right: 10px;" +
+        "        cursor: pointer;" +
+        "      \">🔊</button>" +
+        "      " +
+        "      <button id=\"cinecraze-fullscreen-btn\" style=\"" +
+        "        background: rgba(255,255,255,0.2);" +
+        "        border: none;" +
+        "        border-radius: 50%;" +
+        "        width: 35px;" +
+        "        height: 35px;" +
+        "        color: white;" +
+        "        cursor: pointer;" +
+        "      \">⛶</button>" +
+        "    </div>" +
+        "  `;" +
+        "  " +
+        "  // Remove existing custom controls if any" +
+        "  var existingControls = document.getElementById('cinecraze-video-controls');" +
+        "  if(existingControls) existingControls.remove();" +
+        "  " +
+        "  // Add custom controls to body" +
+        "  document.body.insertAdjacentHTML('beforeend', customControlsHTML);" +
+        "  " +
+        "  // Step 6: Add comprehensive CSS to hide all conflicting elements" +
         "  var style = document.createElement('style');" +
         "  style.textContent = `" +
-        "    .drive-viewer-pageless-unloaded { display: none !important; }" +
-        "    [data-target=\"drive.web.downloadDialog\"] { display: none !important; }" +
-        "    [data-target=\"drive.web.shareDialog\"] { display: none !important; }" +
-        "    .gb_fa, .gb_ea, .gb_da { display: none !important; }" +
-        "    [role=\"banner\"], [role=\"navigation\"] { display: none !important; }" +
-        "    " +
-        "    /* Style the video controller to match the image */" +
-        "    video::-webkit-media-controls-panel { " +
-        "      background: rgba(28, 28, 28, 0.8) !important; " +
-        "      border-radius: 0 !important; " +
-        "      bottom: 0 !important; " +
-        "      padding: 10px !important; " +
-        "    }" +
-        "    " +
-        "    video::-webkit-media-controls-play-button { " +
-        "      background-color: #fff !important; " +
-        "      border-radius: 50% !important; " +
-        "    }" +
-        "    " +
+        "    /* Hide all Google Drive interface elements */" +
+        "    .drive-viewer-pageless-unloaded, " +
+        "    [data-target=\"drive.web.downloadDialog\"], " +
+        "    [data-target=\"drive.web.shareDialog\"], " +
+        "    .gb_fa, .gb_ea, .gb_da, " +
+        "    [role=\"banner\"], [role=\"navigation\"], " +
+        "    [class*=\"video-controls\"], " +
+        "    [class*=\"player-controls\"], " +
+        "    [class*=\"media-controls\"], " +
+        "    .ytp-chrome-top, .ytp-chrome-bottom, " +
+        "    .ytp-progress-bar-container, .ytp-title, " +
+        "    .ytp-chrome-controls, " +
+        "    /* Hide native video controls completely */" +
+        "    video::-webkit-media-controls, " +
+        "    video::-webkit-media-controls-panel, " +
+        "    video::-webkit-media-controls-play-button, " +
+        "    video::-webkit-media-controls-timeline, " +
         "    video::-webkit-media-controls-current-time-display, " +
-        "    video::-webkit-media-controls-time-remaining-display { " +
-        "      color: white !important; " +
-        "      font-size: 14px !important; " +
-        "      padding: 0 10px !important; " +
-        "    }" +
-        "    " +
-        "    video::-webkit-media-controls-timeline { " +
-        "      background-color: rgba(255, 255, 255, 0.3) !important; " +
-        "      border-radius: 2px !important; " +
-        "      margin: 0 10px !important; " +
-        "    }" +
-        "    " +
-        "    video::-webkit-media-controls-volume-slider { " +
-        "      display: none !important; " +
-        "    }" +
-        "    " +
-        "    video::-webkit-media-controls-mute-button { " +
-        "      margin-right: 10px !important; " +
-        "    }" +
-        "    " +
+        "    video::-webkit-media-controls-time-remaining-display, " +
+        "    video::-webkit-media-controls-mute-button, " +
+        "    video::-webkit-media-controls-volume-slider, " +
         "    video::-webkit-media-controls-fullscreen-button { " +
-        "      margin-left: 10px !important; " +
+        "      display: none !important; " +
+        "      visibility: hidden !important; " +
+        "      opacity: 0 !important; " +
+        "    }" +
+        "    " +
+        "    /* Ensure video takes full space */" +
+        "    video { " +
+        "      width: 100% !important; " +
+        "      height: 100% !important; " +
+        "      object-fit: contain !important; " +
         "    }" +
         "  `;" +
         "  document.head.appendChild(style);" +
         "  " +
-        "  // Delayed cleanup for dynamically loaded elements" +
-        "  setTimeout(function() {" +
-        "    interfaceSelectors.forEach(function(selector) {" +
-        "      var elements = document.querySelectorAll(selector);" +
-        "      for(var i = 0; i < elements.length; i++) {" +
-        "        if (!elements[i].closest('.video-controls') && " +
-        "            !elements[i].closest('[class*=\"control\"]') && " +
-        "            !elements[i].closest('[class*=\"player\"]')) {" +
-        "          elements[i].style.display = 'none';" +
-        "        }" +
-        "      }" +
-        "    });" +
-        "  }, 1000);" +
-        "  " +
-        "  console.log('Improved Google Drive video player fix applied successfully');" +
+        "  console.log('Professional Google Drive video player UI fix applied successfully');" +
         "} catch(e) {" +
         "  console.log('Google Drive fix error: ' + e.message);" +
         "}";
     
     view.evaluateJavascript(jsCode, null);
     
-    // Additional script to ensure controller remains visible
-    String controllerScript = "javascript:" +
+    // Step 7: Add control functionality
+    String controlScript = "javascript:" +
         "setTimeout(function() {" +
-        "  var videos = document.querySelectorAll('video');" +
-        "  for(var i = 0; i < videos.length; i++) {" +
-        "    videos[i].controls = true;" +
-        "    " +
-        "    // Ensure controller is visible" +
-        "    var controls = videos[i].parentElement.querySelector('[class*=\"control\"], [class*=\"controller\"]');" +
-        "    if(controls) {" +
-        "      controls.style.display = 'block';" +
-        "      controls.style.visibility = 'visible';" +
-        "      controls.style.opacity = '1';" +
-        "      controls.style.zIndex = '9999';" +
+        "  var video = document.querySelector('video');" +
+        "  if(!video) return;" +
+        "  " +
+        "  var controls = document.getElementById('cinecraze-video-controls');" +
+        "  var playBtn = document.getElementById('cinecraze-play-btn');" +
+        "  var playIcon = document.getElementById('cinecraze-play-icon');" +
+        "  var rewindBtn = document.getElementById('cinecraze-rewind-btn');" +
+        "  var forwardBtn = document.getElementById('cinecraze-forward-btn');" +
+        "  var volumeBtn = document.getElementById('cinecraze-volume-btn');" +
+        "  var fullscreenBtn = document.getElementById('cinecraze-fullscreen-btn');" +
+        "  var timeDisplay = document.getElementById('cinecraze-time-display');" +
+        "  var progressContainer = document.getElementById('cinecraze-progress-container');" +
+        "  var progressBar = document.getElementById('cinecraze-progress-bar');" +
+        "  " +
+        "  if(!controls || !video) return;" +
+        "  " +
+        "  // Show controls on mouse move" +
+        "  var hideTimeout;" +
+        "  document.addEventListener('mousemove', function() {" +
+        "    controls.style.opacity = '1';" +
+        "    clearTimeout(hideTimeout);" +
+        "    hideTimeout = setTimeout(function() {" +
+        "      controls.style.opacity = '0';" +
+        "    }, 3000);" +
+        "  });" +
+        "  " +
+        "  // Play/Pause functionality" +
+        "  playBtn.addEventListener('click', function() {" +
+        "    if(video.paused) {" +
+        "      video.play();" +
+        "      playIcon.style.borderLeft = '8px solid #333';" +
+        "      playIcon.style.borderTop = '6px solid transparent';" +
+        "      playIcon.style.borderBottom = '6px solid transparent';" +
+        "      playIcon.style.borderRight = 'none';" +
+        "      playIcon.style.marginLeft = '0';" +
+        "    } else {" +
+        "      video.pause();" +
+        "      playIcon.style.borderLeft = '12px solid #333';" +
+        "      playIcon.style.borderTop = '8px solid transparent';" +
+        "      playIcon.style.borderBottom = '8px solid transparent';" +
+        "      playIcon.style.borderRight = 'none';" +
+        "      playIcon.style.marginLeft = '3px';" +
+        "    }" +
+        "  });" +
+        "  " +
+        "  // Rewind 10 seconds" +
+        "  rewindBtn.addEventListener('click', function() {" +
+        "    video.currentTime = Math.max(0, video.currentTime - 10);" +
+        "  });" +
+        "  " +
+        "  // Forward 10 seconds" +
+        "  forwardBtn.addEventListener('click', function() {" +
+        "    video.currentTime = Math.min(video.duration, video.currentTime + 10);" +
+        "  });" +
+        "  " +
+        "  // Volume toggle" +
+        "  volumeBtn.addEventListener('click', function() {" +
+        "    if(video.muted) {" +
+        "      video.muted = false;" +
+        "      volumeBtn.textContent = '🔊';" +
+        "    } else {" +
+        "      video.muted = true;" +
+        "      volumeBtn.textContent = '🔇';" +
+        "    }" +
+        "  });" +
+        "  " +
+        "  // Fullscreen toggle" +
+        "  fullscreenBtn.addEventListener('click', function() {" +
+        "    if(document.fullscreenElement) {" +
+        "      document.exitFullscreen();" +
+        "    } else {" +
+        "      document.documentElement.requestFullscreen();" +
+        "    }" +
+        "  });" +
+        "  " +
+        "  // Progress bar click" +
+        "  progressContainer.addEventListener('click', function(e) {" +
+        "    var rect = progressContainer.getBoundingClientRect();" +
+        "    var clickX = e.clientX - rect.left;" +
+        "    var percentage = clickX / rect.width;" +
+        "    video.currentTime = percentage * video.duration;" +
+        "  });" +
+        "  " +
+        "  // Update time and progress" +
+        "  function updateTime() {" +
+        "    if(video.duration) {" +
+        "      var current = Math.floor(video.currentTime);" +
+        "      var total = Math.floor(video.duration);" +
+        "      var currentMin = Math.floor(current / 60);" +
+        "      var currentSec = current % 60;" +
+        "      var totalMin = Math.floor(total / 60);" +
+        "      var totalSec = total % 60;" +
+        "      " +
+        "      timeDisplay.textContent = " +
+        "        (currentMin < 10 ? '0' : '') + currentMin + ':' + " +
+        "        (currentSec < 10 ? '0' : '') + currentSec + ' / ' + " +
+        "        (totalMin < 10 ? '0' : '') + totalMin + ':' + " +
+        "        (totalSec < 10 ? '0' : '') + totalSec;" +
+        "      " +
+        "      var progress = (video.currentTime / video.duration) * 100;" +
+        "      progressBar.style.width = progress + '%';" +
         "    }" +
         "  }" +
-        "}, 2000);";
+        "  " +
+        "  // Update play button state" +
+        "  video.addEventListener('play', function() {" +
+        "    playIcon.style.borderLeft = '8px solid #333';" +
+        "    playIcon.style.borderTop = '6px solid transparent';" +
+        "    playIcon.style.borderBottom = '6px solid transparent';" +
+        "    playIcon.style.borderRight = 'none';" +
+        "    playIcon.style.marginLeft = '0';" +
+        "  });" +
+        "  " +
+        "  video.addEventListener('pause', function() {" +
+        "    playIcon.style.borderLeft = '12px solid #333';" +
+        "    playIcon.style.borderTop = '8px solid transparent';" +
+        "    playIcon.style.borderBottom = '8px solid transparent';" +
+        "    playIcon.style.borderRight = 'none';" +
+        "    playIcon.style.marginLeft = '3px';" +
+        "  });" +
+        "  " +
+        "  // Update time every second" +
+        "  video.addEventListener('timeupdate', updateTime);" +
+        "  video.addEventListener('loadedmetadata', updateTime);" +
+        "  " +
+        "  // Auto-play video" +
+        "  video.play().catch(function(e) {" +
+        "    console.log('Autoplay failed:', e);" +
+        "  });" +
+        "  " +
+        "  console.log('Custom video controls initialized successfully');" +
+        "}, 1000);";
     
-    view.evaluateJavascript(controllerScript, null);
+    view.evaluateJavascript(controlScript, null);
     
     view.evaluateJavascript(getAutoPlayJs(), new ValueCallback<String>() {
         @Override
         public void onReceiveValue(String value) {
-            Log.d(TAG, "Improved Google Drive video player fix applied: " + value);
+            Log.d(TAG, "Professional Google Drive video player UI fix applied: " + value);
         }
     });
 }
