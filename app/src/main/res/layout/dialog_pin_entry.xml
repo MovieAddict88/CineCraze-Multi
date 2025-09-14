@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="@drawable/dialog_backgrounds"
+    android:gravity="center_horizontal">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Enter Parental Control PIN"
+        android:textColor="@color/netflix_white"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:layout_marginBottom="24dp" />
+
+    <LinearLayout
+        android:id="@+id/pin_indicator"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginBottom="24dp">
+        
+        <View
+            android:id="@+id/dot1"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_margin="8dp"
+            android:background="@drawable/pin_dot_empty" />
+            
+        <View
+            android:id="@+id/dot2"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_margin="8dp"
+            android:background="@drawable/pin_dot_empty" />
+            
+        <View
+            android:id="@+id/dot3"
+            android:layout_width="16dp"
+        android:layout_height="16dp"
+            android:layout_margin="8dp"
+            android:background="@drawable/pin_dot_empty" />
+            
+        <View
+            android:id="@+id/dot4"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_margin="8dp"
+            android:background="@drawable/pin_dot_empty" />
+    </LinearLayout>
+
+    <GridLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:columnCount="3"
+        android:rowCount="4"
+        android:alignmentMode="alignMargins"
+        android:columnOrderPreserved="false"
+        android:padding="8dp">
+        
+        <!-- Row 1 -->
+        <Button
+            android:id="@+id/btn1"
+            style="@style/NumberButton"
+            android:text="1" />
+            
+        <Button
+            android:id="@+id/btn2"
+            style="@style/NumberButton"
+            android:text="2" />
+            
+        <Button
+            android:id="@+id/btn3"
+            style="@style/NumberButton"
+            android:text="3" />
+        
+        <!-- Row 2 -->
+        <Button
+            android:id="@+id/btn4"
+            style="@style/NumberButton"
+            android:text="4" />
+            
+        <Button
+            android:id="@+id/btn5"
+            style="@style/NumberButton"
+            android:text="5" />
+            
+        <Button
+            android:id="@+id/btn6"
+            style="@style/NumberButton"
+            android:text="6" />
+        
+        <!-- Row 3 -->
+        <Button
+            android:id="@+id/btn7"
+            style="@style/NumberButton"
+            android:text="7" />
+            
+        <Button
+            android:id="@+id/btn8"
+            style="@style/NumberButton"
+            android:text="8" />
+            
+        <Button
+            android:id="@+id/btn9"
+            style="@style/NumberButton"
+            android:text="9" />
+        
+        <!-- Row 4 -->
+        <Button
+            android:id="@+id/btnClear"
+            style="@style/NumberButton"
+            android:text="C"
+            android:textColor="@color/netflix_red" />
+            
+        <Button
+            android:id="@+id/btn0"
+            style="@style/NumberButton"
+            android:text="0" />
+            
+        <Button
+            android:id="@+id/btnBack"
+            style="@style/NumberButton"
+            android:text="←"
+            android:textColor="@color/netflix_red" />
+    </GridLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginTop="24dp">
+        
+        <Button
+            android:id="@+id/btnCancel"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_margin="8dp"
+            android:text="Cancel"
+            android:textColor="@color/netflix_light_gray"
+            android:background="@drawable/button_border" />
+            
+        <Button
+            android:id="@+id/btnOk"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_margin="8dp"
+            android:text="OK"
+            android:textColor="@color/netflix_white"
+            android:backgroundTint="@color/netflix_red" />
+    </LinearLayout>
+
+</LinearLayout>
