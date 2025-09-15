@@ -15,9 +15,21 @@ import androidx.cardview.widget.CardView;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
+import android.widget.LinearLayout;
+import android.widget.Spinner;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class SettingsActivity extends AppCompatActivity {
@@ -25,13 +37,33 @@ public class SettingsActivity extends AppCompatActivity {
     private boolean settingsChanged = false;
     private static final String PREFS_NAME = "ParentalControls";
     private static final String PIN_KEY = "pin";
-    private static final String SELECTED_RATINGS_KEY = "selected_ratings";
+    private static final String SELECTED_COUNTRY_KEY = "selected_country";
+    private static final String RATINGS_MAP_KEY = "ratings_map";
     private static final String UNRATED_KEY = "unrated";
 
     private SharedPreferences prefs;
     private TextView selectedRatingsTextView;
     private SwitchCompat unratedSwitch;
     private CardView pinCard, ratingsCard, unratedCard;
+    private Spinner countrySpinner;
+    private Gson gson = new Gson();
+
+    private static final Map<String, List<String>> COUNTRY_RATINGS = new LinkedHashMap<>();
+    private static final List<String> COUNTRIES = new ArrayList<>();
+
+    static {
+        // Using LinkedHashMap to maintain insertion order for the spinner
+        COUNTRY_RATINGS.put("United States", Arrays.asList("G", "PG", "PG-13", "R", "NC-17", "TV-Y", "TV-Y7", "TV-G", "TV-PG", "TV-14", "TV-MA"));
+        COUNTRY_RATINGS.put("Philippines", Arrays.asList("G", "PG", "R-13", "R-16", "R-18", "SPG"));
+        COUNTRY_RATINGS.put("Japan", Arrays.asList("G", "PG12", "R15+", "R18+"));
+        COUNTRY_RATINGS.put("South Korea", Arrays.asList("ALL", "12", "15", "19"));
+        COUNTRY_RATINGS.put("Thailand", Arrays.asList("P", "G", "13+", "15+", "18+", "20+"));
+        COUNTRY_RATINGS.put("India", Arrays.asList("U", "U/A", "U/A 7+", "U/A 13+", "U/A 16+", "A", "S"));
+        COUNTRY_RATINGS.put("Turkey", Arrays.asList("Genel İzleyici", "7+", "13+", "18+"));
+        // China is omitted as it has no formal rating system
+
+        COUNTRIES.addAll(COUNTRY_RATINGS.keySet());
+    }
 
     // PIN creation variables
     private View dot1, dot2, dot3, dot4;
@@ -60,6 +92,9 @@ public class SettingsActivity extends AppCompatActivity {
         dots = new View[]{dot1, dot2, dot3, dot4};
         savePinButton = findViewById(R.id.save_pin_button);
 
+        // Set up country spinner
+        setupCountrySpinner();
+
         selectedRatingsTextView.setOnClickListener(v -> showMultiSelectRatingDialog());
 
         // Set up PIN creation
@@ -70,6 +105,38 @@ public class SettingsActivity extends AppCompatActivity {
         } else {
             showSettings();
         }
+    }
+
+    private void setupCountrySpinner() {
+        countrySpinner = new Spinner(this);
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, COUNTRIES);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        countrySpinner.setAdapter(adapter);
+
+        // Add the spinner to the layout
+        ViewGroup parent = (ViewGroup) ratingsCard.getParent();
+        int ratingsCardIndex = parent.indexOfChild(ratingsCard);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        params.setMargins(16, 16, 16, 16);
+        countrySpinner.setLayoutParams(params);
+        parent.addView(countrySpinner, ratingsCardIndex);
+
+        countrySpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                String selectedCountry = COUNTRIES.get(position);
+                prefs.edit().putString(SELECTED_COUNTRY_KEY, selectedCountry).apply();
+                updateSelectedRatingsTextView();
+                settingsChanged = true;
+            }
+
+            @Override
+            public void onNothingSelected(android.widget.AdapterView<?> parent) {
+            }
+        });
     }
 
     private void setupPinCreation() {
@@ -221,8 +288,11 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     private void loadSettings() {
-        Set<String> selectedRatings = prefs.getStringSet(SELECTED_RATINGS_KEY, new HashSet<>(Arrays.asList("G", "PG", "PG-13", "R", "NC-17")));
-        updateSelectedRatingsTextView(selectedRatings);
+        String selectedCountry = prefs.getString(SELECTED_COUNTRY_KEY, COUNTRIES.get(0));
+        int spinnerPosition = COUNTRIES.indexOf(selectedCountry);
+        countrySpinner.setSelection(spinnerPosition);
+
+        updateSelectedRatingsTextView();
 
         boolean showUnrated = prefs.getBoolean(UNRATED_KEY, true);
         unratedSwitch.setChecked(showUnrated);
@@ -234,10 +304,11 @@ public class SettingsActivity extends AppCompatActivity {
         editor.apply();
     }
 
-    private void saveRatings(Set<String> ratings) {
-        SharedPreferences.Editor editor = prefs.edit();
-        editor.putStringSet(SELECTED_RATINGS_KEY, ratings);
-        editor.apply();
+    private void saveRatings(String country, Set<String> ratings) {
+        Map<String, Set<String>> allRatings = getRatingsMap();
+        allRatings.put(country, ratings);
+        String json = gson.toJson(allRatings);
+        prefs.edit().putString(RATINGS_MAP_KEY, json).apply();
         settingsChanged = true;
     }
 
@@ -262,9 +333,12 @@ public class SettingsActivity extends AppCompatActivity {
         finish();
     }
 
-    private void updateSelectedRatingsTextView(Set<String> ratings) {
+    private void updateSelectedRatingsTextView() {
+        String selectedCountry = (String) countrySpinner.getSelectedItem();
+        Set<String> ratings = getRatingsMap().get(selectedCountry);
+
         if (ratings == null || ratings.isEmpty()) {
-            selectedRatingsTextView.setText("Click to select ratings");
+            selectedRatingsTextView.setText("Click to select ratings for " + selectedCountry);
         } else {
             List<String> sortedRatings = new ArrayList<>(ratings);
             Collections.sort(sortedRatings);
@@ -272,11 +346,33 @@ public class SettingsActivity extends AppCompatActivity {
         }
     }
 
+    private Map<String, Set<String>> getRatingsMap() {
+        String json = prefs.getString(RATINGS_MAP_KEY, null);
+        if (json == null) {
+            // Default to all ratings selected for all countries
+            Map<String, Set<String>> defaultMap = new HashMap<>();
+            for (String country : COUNTRIES) {
+                defaultMap.put(country, new HashSet<>(COUNTRY_RATINGS.get(country)));
+            }
+            return defaultMap;
+        }
+        Type type = new TypeToken<Map<String, Set<String>>>() {}.getType();
+        return gson.fromJson(json, type);
+    }
+
     private void showMultiSelectRatingDialog() {
-        String[] ratings = new String[]{"G", "PG", "PG-13", "R", "NC-17"};
+        String selectedCountry = (String) countrySpinner.getSelectedItem();
+        List<String> countryRatingsList = COUNTRY_RATINGS.get(selectedCountry);
+        if (countryRatingsList == null) return;
+
+        String[] ratings = countryRatingsList.toArray(new String[0]);
         boolean[] checkedItems = new boolean[ratings.length];
 
-        Set<String> selectedRatings = prefs.getStringSet(SELECTED_RATINGS_KEY, new HashSet<>(Arrays.asList("G", "PG", "PG-13", "R", "NC-17")));
+        Set<String> selectedRatings = getRatingsMap().get(selectedCountry);
+        if (selectedRatings == null) {
+            selectedRatings = new HashSet<>(countryRatingsList); // Default to all selected
+        }
+
         for (int i = 0; i < ratings.length; i++) {
             if (selectedRatings.contains(ratings[i])) {
                 checkedItems[i] = true;
@@ -284,7 +380,7 @@ public class SettingsActivity extends AppCompatActivity {
         }
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Select Allowed Ratings");
+        builder.setTitle("Select Ratings for " + selectedCountry);
         builder.setMultiChoiceItems(ratings, checkedItems, (dialog, which, isChecked) -> {
             checkedItems[which] = isChecked;
         });
@@ -296,8 +392,8 @@ public class SettingsActivity extends AppCompatActivity {
                     newSelectedRatings.add(ratings[i]);
                 }
             }
-            saveRatings(newSelectedRatings);
-            updateSelectedRatingsTextView(newSelectedRatings);
+            saveRatings(selectedCountry, newSelectedRatings);
+            updateSelectedRatingsTextView();
         });
         builder.setNegativeButton("Cancel", null);
 

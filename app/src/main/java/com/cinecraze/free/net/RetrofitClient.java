@@ -32,6 +32,7 @@ public class RetrofitClient {
                     Request request = original.newBuilder()
                             .header("User-Agent", "Mozilla/5.0 (Android) CineCraze/1.0")
                             .header("Accept", "application/json")
+                            .header("Cache-Control", "no-cache")
                             .method(original.method(), original.body())
                             .build();
 

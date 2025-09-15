@@ -23,7 +23,9 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -36,6 +38,7 @@ import retrofit2.Response;
 public class DataRepository {
 
     private static final String TAG = "DataRepository";
+    private static final String RATINGS_MAP_KEY = "ratings_map"; // For country-specific ratings
     private static final String CACHE_KEY_PLAYLIST = "playlist_data";
     private static final long CACHE_EXPIRY_HOURS = 24; // Cache expires after 24 hours
     public static final int DEFAULT_PAGE_SIZE = 20; // Default items per page
@@ -83,9 +86,36 @@ public class DataRepository {
     }
 
     private void loadParentalControlSettings() {
-        Set<String> selectedRatings = parentalPrefs.getStringSet("selected_ratings", new HashSet<>(Arrays.asList("G", "PG", "PG-13", "R", "NC-17")));
+        String json = parentalPrefs.getString(RATINGS_MAP_KEY, null);
+        Set<String> combinedRatings = new HashSet<>();
+
+        if (json == null) {
+            // If no settings are saved, default to allowing all ratings from all countries.
+            // This ensures that before the user touches the settings, everything is visible.
+            Map<String, List<String>> defaultCountryRatings = new LinkedHashMap<>();
+            defaultCountryRatings.put("United States", Arrays.asList("G", "PG", "PG-13", "R", "NC-17", "TV-Y", "TV-Y7", "TV-G", "TV-PG", "TV-14", "TV-MA"));
+            defaultCountryRatings.put("Philippines", Arrays.asList("G", "PG", "R-13", "R-16", "R-18", "SPG"));
+            defaultCountryRatings.put("Japan", Arrays.asList("G", "PG12", "R15+", "R18+"));
+            defaultCountryRatings.put("South Korea", Arrays.asList("ALL", "12", "15", "19"));
+            defaultCountryRatings.put("Thailand", Arrays.asList("P", "G", "13+", "15+", "18+", "20+"));
+            defaultCountryRatings.put("India", Arrays.asList("U", "U/A", "U/A 7+", "U/A 13+", "U/A 16+", "A", "S"));
+            defaultCountryRatings.put("Turkey", Arrays.asList("Genel İzleyici", "7+", "13+", "18+"));
+
+            for (List<String> ratings : defaultCountryRatings.values()) {
+                combinedRatings.addAll(ratings);
+            }
+        } else {
+            Type type = new TypeToken<Map<String, Set<String>>>() {}.getType();
+            Map<String, Set<String>> ratingsMap = gson.fromJson(json, type);
+            if (ratingsMap != null) {
+                for (Set<String> ratings : ratingsMap.values()) {
+                    combinedRatings.addAll(ratings);
+                }
+            }
+        }
+
         includeUnrated = parentalPrefs.getBoolean("unrated", true);
-        allowedRatings = new ArrayList<>(selectedRatings);
+        allowedRatings = new ArrayList<>(combinedRatings);
     }
 
     public void hasValidCache(CacheValidationCallback callback) {
@@ -553,7 +583,6 @@ public class DataRepository {
                 }
 
                 database.runInTransaction(() -> {
-                    database.entryDao().deleteAll();
                     if (!entitiesToInsert.isEmpty()) {
                         database.entryDao().insertAll(entitiesToInsert);
                     }
