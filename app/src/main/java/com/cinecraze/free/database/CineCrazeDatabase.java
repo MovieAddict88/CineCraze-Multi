@@ -7,6 +7,7 @@ import androidx.room.Room;
 import androidx.room.RoomDatabase;
 
 import com.cinecraze.free.database.dao.EntryDao;
+import com.cinecraze.free.database.dao.TempEntryDao;
 import com.cinecraze.free.database.dao.CacheMetadataDao;
 import com.cinecraze.free.database.entities.EntryEntity;
 import com.cinecraze.free.database.entities.CacheMetadataEntity;
@@ -15,8 +16,8 @@ import androidx.room.migration.Migration;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
 @Database(
-    entities = {EntryEntity.class, CacheMetadataEntity.class, com.cinecraze.free.database.entities.DownloadItemEntity.class},
-    version = 4,
+    entities = {EntryEntity.class, CacheMetadataEntity.class, com.cinecraze.free.database.entities.DownloadItemEntity.class, com.cinecraze.free.database.entities.TempEntryEntity.class},
+    version = 5, // Incremented version because of new table
     exportSchema = false
 )
 public abstract class CineCrazeDatabase extends RoomDatabase {
@@ -25,6 +26,7 @@ public abstract class CineCrazeDatabase extends RoomDatabase {
     private static CineCrazeDatabase instance;
 
     public abstract EntryDao entryDao();
+    public abstract TempEntryDao tempEntryDao();
     public abstract CacheMetadataDao cacheMetadataDao();
     public abstract com.cinecraze.free.database.dao.DownloadItemDao downloadItemDao();
 
@@ -42,6 +44,14 @@ public abstract class CineCrazeDatabase extends RoomDatabase {
         }
     };
 
+    // Migration to add the new temp table
+    static final Migration MIGRATION_4_5 = new Migration(4, 5) {
+        @Override
+        public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("CREATE TABLE IF NOT EXISTS `entries_temp` (`id` INTEGER NOT NULL, `title` TEXT, `sub_category` TEXT, `country` TEXT, `description` TEXT, `poster` TEXT, `thumbnail` TEXT, `rating` TEXT, `duration` TEXT, `year` TEXT, `main_category` TEXT, `servers_json` TEXT, `seasons_json` TEXT, `related_json` TEXT, `parental_rating` TEXT, PRIMARY KEY(`id`))");
+        }
+    };
+
     public static synchronized CineCrazeDatabase getInstance(Context context) {
         if (instance == null) {
             instance = Room.databaseBuilder(
@@ -49,7 +59,7 @@ public abstract class CineCrazeDatabase extends RoomDatabase {
                 CineCrazeDatabase.class,
                 DATABASE_NAME
             )
-            .addMigrations(MIGRATION_2_3, MIGRATION_3_4)
+            .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
             .allowMainThreadQueries() // For simplicity, but ideally use background threads
             .build();
         }

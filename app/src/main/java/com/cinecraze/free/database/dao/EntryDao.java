@@ -115,4 +115,7 @@ public interface EntryDao {
            "(:year IS NULL OR year = :year) AND " +
            "(parental_rating IN (:allowedRatings) OR (:includeUnrated AND parental_rating IS NULL))")
     int getEntriesFilteredCountWithRating(String genre, String country, String year, List<String> allowedRatings, boolean includeUnrated);
+
+    @Query("INSERT INTO entries SELECT * FROM entries_temp")
+    void copyFromTemp();
 }

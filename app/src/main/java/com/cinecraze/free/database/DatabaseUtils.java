@@ -94,4 +94,28 @@ public class DatabaseUtils {
         }
         return entries;
     }
+
+    public static com.cinecraze.free.database.entities.TempEntryEntity entryToTempEntity(Entry entry, String mainCategory) {
+        com.cinecraze.free.database.entities.TempEntryEntity entity = new com.cinecraze.free.database.entities.TempEntryEntity();
+
+        entity.setId(entry.getId());
+        entity.setTitle(entry.getTitle());
+        entity.setSubCategory(entry.getSubCategory());
+        entity.setCountry(entry.getCountry());
+        entity.setDescription(entry.getDescription());
+        entity.setPoster(entry.getPoster());
+        entity.setThumbnail(entry.getThumbnail());
+        entity.setRating(entry.getRatingString());
+        entity.setDuration(entry.getDuration());
+        entity.setYear(entry.getYearString());
+        entity.setMainCategory(mainCategory);
+        entity.setParentalRating(entry.getParentalRating());
+
+        // Convert complex objects to JSON strings
+        entity.setServersJson(gson.toJson(entry.getServers()));
+        entity.setSeasonsJson(gson.toJson(entry.getSeasons()));
+        entity.setRelatedJson(gson.toJson(entry.getRelated()));
+
+        return entity;
+    }
 }

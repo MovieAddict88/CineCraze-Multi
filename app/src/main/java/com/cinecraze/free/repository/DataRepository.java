@@ -526,17 +526,20 @@ public class DataRepository {
     }
 
     private void fetchAllPlaylists(List<String> playlistUrls, int version, List<String> allRemoteUrls, FetchCallback finalCallback) {
-        java.util.Set<String> uniqueEntryTitles = new java.util.HashSet<>();
-        List<EntryWithCategory> allEntriesToCache = new ArrayList<>();
-
-        mainHandler.post(() -> fetchPlaylistAtIndex(0, playlistUrls, version, allRemoteUrls, uniqueEntryTitles, allEntriesToCache, finalCallback));
+        executor.execute(() -> {
+            database.tempEntryDao().deleteAll();
+            Log.d(TAG, "Temporary cache cleared.");
+            mainHandler.post(() -> {
+                java.util.Set<String> uniqueEntryTitles = new java.util.HashSet<>();
+                fetchPlaylistAtIndex(0, playlistUrls, version, allRemoteUrls, uniqueEntryTitles, finalCallback);
+            });
+        });
     }
 
-    private void fetchPlaylistAtIndex(int index, List<String> playlistUrls, int version, List<String> allRemoteUrls, java.util.Set<String> uniqueEntryTitles, List<EntryWithCategory> allEntriesToCache, FetchCallback finalCallback) {
+    private void fetchPlaylistAtIndex(int index, List<String> playlistUrls, int version, List<String> allRemoteUrls, java.util.Set<String> uniqueEntryTitles, FetchCallback finalCallback) {
         if (index >= playlistUrls.size()) {
-            replaceCache(version, allRemoteUrls, allEntriesToCache, () -> {
-                mainHandler.post(() -> finalCallback.onSuccess(new ArrayList<>()));
-            });
+            Log.d(TAG, "All playlists fetched successfully. Committing to main database.");
+            commitTemporaryData(version, allRemoteUrls, () -> finalCallback.onSuccess(new ArrayList<>()), finalCallback::onError);
             return;
         }
 
@@ -548,61 +551,57 @@ public class DataRepository {
             public void onResponse(Call<Playlist> call, Response<Playlist> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     Playlist playlist = response.body();
-                    if (playlist.getCategories() != null) {
-                        for (Category category : playlist.getCategories()) {
-                            if (category != null && category.getEntries() != null) {
-                                for (Entry entry : category.getEntries()) {
-                                    if (entry != null && entry.getTitle() != null && !uniqueEntryTitles.contains(entry.getTitle())) {
-                                        allEntriesToCache.add(new EntryWithCategory(entry, category.getMainCategory()));
-                                        uniqueEntryTitles.add(entry.getTitle());
+                    executor.execute(() -> {
+                        List<com.cinecraze.free.database.entities.TempEntryEntity> tempEntities = new ArrayList<>();
+                        if (playlist.getCategories() != null) {
+                            for (Category category : playlist.getCategories()) {
+                                if (category != null && category.getEntries() != null) {
+                                    for (Entry entry : category.getEntries()) {
+                                        if (entry != null && entry.getTitle() != null && !uniqueEntryTitles.contains(entry.getTitle())) {
+                                            tempEntities.add(DatabaseUtils.entryToTempEntity(entry, category.getMainCategory()));
+                                            uniqueEntryTitles.add(entry.getTitle());
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
+                        database.tempEntryDao().insertAll(tempEntities);
+                        Log.d(TAG, "Inserted " + tempEntities.size() + " entries into temp table from " + url);
+                        mainHandler.post(() -> fetchPlaylistAtIndex(index + 1, playlistUrls, version, allRemoteUrls, uniqueEntryTitles, finalCallback));
+                    });
                 } else {
-                    Log.e(TAG, "API call failed for playlist " + url);
+                    Log.e(TAG, "Failed to fetch playlist " + url + ". Aborting update.");
+                    mainHandler.post(() -> finalCallback.onError("Failed to fetch playlist: " + url));
                 }
-                fetchPlaylistAtIndex(index + 1, playlistUrls, version, allRemoteUrls, uniqueEntryTitles, allEntriesToCache, finalCallback);
             }
 
             @Override
             public void onFailure(Call<Playlist> call, Throwable t) {
-                Log.e(TAG, "API call failed for playlist " + url + ": " + t.getMessage(), t);
-                fetchPlaylistAtIndex(index + 1, playlistUrls, version, allRemoteUrls, uniqueEntryTitles, allEntriesToCache, finalCallback);
+                Log.e(TAG, "Failed to fetch playlist " + url + ". Aborting update.", t);
+                mainHandler.post(() -> finalCallback.onError("Network error while fetching playlist: " + url));
             }
         });
     }
 
-    private void replaceCache(int version, List<String> allRemoteUrls, List<EntryWithCategory> entriesWithCategories, Runnable onComplete) {
+    private void commitTemporaryData(int version, List<String> allRemoteUrls, Runnable onSuccess, java.util.function.Consumer<String> onError) {
         executor.execute(() -> {
             try {
-                List<EntryEntity> entitiesToInsert = new ArrayList<>();
-                for (EntryWithCategory ewc : entriesWithCategories) {
-                    entitiesToInsert.add(DatabaseUtils.entryToEntity(ewc.entry, ewc.mainCategory));
-                }
-
                 database.runInTransaction(() -> {
-                    if (!entitiesToInsert.isEmpty()) {
-                        database.entryDao().insertAll(entitiesToInsert);
-                    }
+                    database.entryDao().deleteAll();
+                    database.entryDao().copyFromTemp();
 
-                    CacheMetadataEntity metadata = database.cacheMetadataDao().getMetadata(CACHE_KEY_PLAYLIST);
-                    if (metadata == null) {
-                        metadata = new CacheMetadataEntity();
-                        metadata.setKey(CACHE_KEY_PLAYLIST);
-                    }
+                    CacheMetadataEntity metadata = new CacheMetadataEntity();
+                    metadata.setKey(CACHE_KEY_PLAYLIST);
                     metadata.setLastUpdated(System.currentTimeMillis());
                     metadata.setDataVersion(String.valueOf(version));
                     metadata.setPlaylistUrls(gson.toJson(allRemoteUrls));
                     database.cacheMetadataDao().insert(metadata);
                 });
-
-                Log.d(TAG, "Cache replaced successfully. Version: " + version + ", Entries: " + entitiesToInsert.size());
+                Log.d(TAG, "Successfully committed temporary data to main database.");
+                mainHandler.post(onSuccess);
             } catch (Exception e) {
-                Log.e(TAG, "Error replacing cache: " + e.getMessage(), e);
-            } finally {
-                mainHandler.post(onComplete);
+                Log.e(TAG, "Failed to commit temporary data.", e);
+                mainHandler.post(() -> onError.accept("Failed to save data to database."));
             }
         });
     }

@@ -260,22 +260,31 @@ public abstract class BaseFragment extends Fragment {
     }
 
     protected void populateFilterSpinners() {
-        if (dataRepository == null) return;
+        if (dataRepository == null || getActivity() == null) return;
 
-        // Get unique values from repository and populate spinners
-        List<String> genres = dataRepository.getUniqueGenres();
-        List<String> countries = dataRepository.getUniqueCountries();
-        List<String> years = dataRepository.getUniqueYears();
+        java.util.concurrent.Executor executor = java.util.concurrent.Executors.newSingleThreadExecutor();
+        android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
 
-        if (genreSpinner != null) {
-            genreSpinner.updateFilterValues(genres);
-        }
-        if (countrySpinner != null) {
-            countrySpinner.updateFilterValues(countries);
-        }
-        if (yearSpinner != null) {
-            yearSpinner.updateFilterValues(years);
-        }
+        executor.execute(() -> {
+            // Background work: get unique values from repository
+            List<String> genres = dataRepository.getUniqueGenres();
+            List<String> countries = dataRepository.getUniqueCountries();
+            List<String> years = dataRepository.getUniqueYears();
+
+            // Post to main thread to update UI
+            handler.post(() -> {
+                if (getActivity() == null) return; // Check if fragment is still attached
+                if (genreSpinner != null) {
+                    genreSpinner.updateFilterValues(genres);
+                }
+                if (countrySpinner != null) {
+                    countrySpinner.updateFilterValues(countries);
+                }
+                if (yearSpinner != null) {
+                    yearSpinner.updateFilterValues(years);
+                }
+            });
+        });
     }
 
     protected void dismissAllSpinners() {
@@ -449,10 +458,27 @@ public abstract class BaseFragment extends Fragment {
 
             // Load carousel data if this is the first page and home fragment
             if (currentPage == 0 && carouselAdapter != null && getCategory().isEmpty()) {
-                List<Entry> topRatedEntries = dataRepository.getTopRatedEntries(10);
+                loadCarouselData();
+            }
+        });
+    }
+
+    private void loadCarouselData() {
+        if (dataRepository == null || getActivity() == null) return;
+
+        java.util.concurrent.Executor executor = java.util.concurrent.Executors.newSingleThreadExecutor();
+        android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
+
+        executor.execute(() -> {
+            // Background work
+            List<Entry> topRatedEntries = dataRepository.getTopRatedEntries(10);
+
+            // Post to main thread to update UI
+            handler.post(() -> {
+                if (getActivity() == null || carouselAdapter == null) return; // Check if fragment is still attached
                 carouselAdapter.setEntries(topRatedEntries);
                 carouselAdapter.notifyDataSetChanged();
-            }
+            });
         });
     }
 
