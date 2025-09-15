@@ -471,8 +471,12 @@ public class DataRepository {
                             remotePlaylistUrls.removeIf(url -> url == null || url.trim().isEmpty());
                         }
 
-                        if (remoteVersion > localVersion) {
-                            Log.d(TAG, "New version found. Remote: " + remoteVersion + ", Local: " + localVersion + ". Fetching all playlists.");
+                        // Convert to sets for easier comparison, as order doesn't matter.
+                        java.util.Set<String> remoteSet = new java.util.HashSet<>(remotePlaylistUrls);
+                        java.util.Set<String> localSet = new java.util.HashSet<>(localPlaylistUrls);
+
+                        if (remoteVersion > localVersion || !remoteSet.equals(localSet)) {
+                            Log.d(TAG, "Change detected. Remote version: " + remoteVersion + ", Local version: " + localVersion + ". Playlist URLs match: " + remoteSet.equals(localSet) + ". Fetching all playlists.");
                             mainHandler.post(() -> fetchAllPlaylists(remotePlaylistUrls, remoteVersion, remotePlaylistUrls, callback));
                         } else {
                             Log.d(TAG, "Data is up to date.");
