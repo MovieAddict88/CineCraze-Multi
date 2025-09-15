@@ -21,7 +21,7 @@ public interface EntryDao {
     @Query("SELECT * FROM entries")
     List<EntryEntity> getAllEntries();
 
-    @Query("SELECT * FROM entries WHERE main_category = :category")
+    @Query("SELECT * FROM entries WHERE LOWER(main_category) = LOWER(:category)")
     List<EntryEntity> getEntriesByCategory(String category);
 
     @Query("SELECT * FROM entries WHERE title LIKE '%' || :title || '%'")
@@ -33,20 +33,20 @@ public interface EntryDao {
     @Query("DELETE FROM entries")
     void deleteAll();
 
-    @Query("DELETE FROM entries WHERE main_category = :category")
+    @Query("DELETE FROM entries WHERE LOWER(main_category) = LOWER(:category)")
     void deleteByCategory(String category);
 
     // Pagination queries
     @Query("SELECT * FROM entries ORDER BY title ASC LIMIT :limit OFFSET :offset")
     List<EntryEntity> getEntriesPaged(int limit, int offset);
 
-    @Query("SELECT * FROM entries WHERE main_category = :category ORDER BY title ASC LIMIT :limit OFFSET :offset")
+    @Query("SELECT * FROM entries WHERE LOWER(main_category) = LOWER(:category) ORDER BY title ASC LIMIT :limit OFFSET :offset")
     List<EntryEntity> getEntriesByCategoryPaged(String category, int limit, int offset);
 
     @Query("SELECT * FROM entries WHERE title LIKE '%' || :title || '%' ORDER BY title ASC LIMIT :limit OFFSET :offset")
     List<EntryEntity> searchByTitlePaged(String title, int limit, int offset);
 
-    @Query("SELECT COUNT(*) FROM entries WHERE main_category = :category")
+    @Query("SELECT COUNT(*) FROM entries WHERE LOWER(main_category) = LOWER(:category)")
     int getEntriesCountByCategory(String category);
 
     @Query("SELECT COUNT(*) FROM entries WHERE title LIKE '%' || :title || '%'")
@@ -94,11 +94,11 @@ public interface EntryDao {
     @Query("SELECT COUNT(*) FROM entries WHERE (parental_rating IN (:allowedRatings) OR (:includeUnrated AND parental_rating IS NULL)) AND title LIKE '%' || :title || '%'")
     int getSearchResultsCountWithRating(String title, List<String> allowedRatings, boolean includeUnrated);
 
-    @Query("SELECT * FROM entries WHERE main_category = :category AND (parental_rating IN (:allowedRatings) OR (:includeUnrated AND parental_rating IS NULL))" +
+    @Query("SELECT * FROM entries WHERE LOWER(main_category) = LOWER(:category) AND (parental_rating IN (:allowedRatings) OR (:includeUnrated AND parental_rating IS NULL))" +
            "ORDER BY title ASC LIMIT :limit OFFSET :offset")
     List<EntryEntity> getEntriesByCategoryPagedWithRating(String category, List<String> allowedRatings, boolean includeUnrated, int limit, int offset);
 
-    @Query("SELECT COUNT(*) FROM entries WHERE main_category = :category AND (parental_rating IN (:allowedRatings) OR (:includeUnrated AND parental_rating IS NULL))")
+    @Query("SELECT COUNT(*) FROM entries WHERE LOWER(main_category) = LOWER(:category) AND (parental_rating IN (:allowedRatings) OR (:includeUnrated AND parental_rating IS NULL))")
     int getEntriesCountByCategoryWithRating(String category, List<String> allowedRatings, boolean includeUnrated);
 
     @Query("SELECT * FROM entries WHERE " +

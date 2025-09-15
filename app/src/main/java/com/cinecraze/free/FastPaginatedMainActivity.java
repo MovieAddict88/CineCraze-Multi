@@ -76,6 +76,9 @@ public class FastPaginatedMainActivity extends AppCompatActivity implements Pagi
     private String currentCategory = "";
     private String currentSearchQuery = "";
     private boolean isLoading = false;
+    private android.os.Handler searchHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private Runnable searchRunnable;
+    private volatile long loadRequestCounter = 0;
 
     private AlertDialog downloadingDialog;
 
@@ -199,11 +202,16 @@ public class FastPaginatedMainActivity extends AppCompatActivity implements Pagi
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 String query = s.toString().trim();
-                if (query.length() > 2) {
-                    performSearch(query);
-                } else if (query.isEmpty()) {
-                    clearSearch();
-                }
+                searchHandler.removeCallbacks(searchRunnable);
+
+                searchRunnable = () -> {
+                    if (query.length() > 2) {
+                        performSearch(query);
+                    } else if (query.isEmpty()) {
+                        clearSearch();
+                    }
+                };
+                searchHandler.postDelayed(searchRunnable, 500); // 500ms debounce
             }
 
             @Override
@@ -249,9 +257,14 @@ public class FastPaginatedMainActivity extends AppCompatActivity implements Pagi
     }
 
     private void performSearch(String query) {
+        // This check prevents re-loading if the query hasn't changed,
+        // which can happen with the TextWatcher's saved state.
+        if (query.equals(currentSearchQuery)) {
+            return;
+        }
         currentSearchQuery = query.trim();
         currentPage = 0;
-        loadSearchResults();
+        loadPage();
     }
 
     private void clearSearch() {
@@ -356,25 +369,30 @@ public class FastPaginatedMainActivity extends AppCompatActivity implements Pagi
 
     private void loadPage() {
         if (isLoading) return;
-
         isLoading = true;
         movieAdapter.setLoading(true);
 
-        Log.d("FastPaginatedMainActivity", "Loading page " + currentPage + " with " + pageSize + " items");
+        final long requestToken = ++loadRequestCounter;
+
+        Log.d("FastPaginatedMainActivity", "Loading page " + currentPage + " with token " + requestToken);
 
         if (!currentSearchQuery.isEmpty()) {
-            loadSearchResults();
+            loadSearchResults(requestToken);
         } else if (!currentCategory.isEmpty()) {
-            loadCategoryPage();
+            loadCategoryPage(requestToken);
         } else {
-            loadAllEntriesPage();
+            loadAllEntriesPage(requestToken);
         }
     }
 
-    private void loadAllEntriesPage() {
+    private void loadAllEntriesPage(final long requestToken) {
         dataRepository.getPaginatedData(currentPage, pageSize, new DataRepository.PaginatedDataCallback() {
             @Override
             public void onSuccess(List<Entry> entries, boolean hasMorePages, int totalCount) {
+                if (requestToken != loadRequestCounter) {
+                    Log.d("FastPaginatedMainActivity", "Ignoring stale request " + requestToken);
+                    return;
+                }
                 findViewById(R.id.progress_bar).setVisibility(View.GONE);
                 updatePageData(entries, hasMorePages, totalCount);
                 Log.d("FastPaginatedMainActivity", "Loaded page " + currentPage + ": " + entries.size() + " items (Total: " + totalCount + ")");
@@ -382,16 +400,24 @@ public class FastPaginatedMainActivity extends AppCompatActivity implements Pagi
 
             @Override
             public void onError(String error) {
+                if (requestToken != loadRequestCounter) {
+                    Log.d("FastPaginatedMainActivity", "Ignoring stale error " + requestToken);
+                    return;
+                }
                 findViewById(R.id.progress_bar).setVisibility(View.GONE);
                 handlePageLoadError(error);
             }
         });
     }
 
-    private void loadCategoryPage() {
+    private void loadCategoryPage(final long requestToken) {
         dataRepository.getPaginatedDataByCategory(currentCategory, currentPage, pageSize, new DataRepository.PaginatedDataCallback() {
             @Override
             public void onSuccess(List<Entry> entries, boolean hasMorePages, int totalCount) {
+                if (requestToken != loadRequestCounter) {
+                    Log.d("FastPaginatedMainActivity", "Ignoring stale request " + requestToken);
+                    return;
+                }
                 findViewById(R.id.progress_bar).setVisibility(View.GONE);
                 updatePageData(entries, hasMorePages, totalCount);
                 Log.d("FastPaginatedMainActivity", "Category '" + currentCategory + "' page " + currentPage + ": " + entries.size() + " items");
@@ -399,16 +425,24 @@ public class FastPaginatedMainActivity extends AppCompatActivity implements Pagi
 
             @Override
             public void onError(String error) {
+                if (requestToken != loadRequestCounter) {
+                    Log.d("FastPaginatedMainActivity", "Ignoring stale error " + requestToken);
+                    return;
+                }
                 findViewById(R.id.progress_bar).setVisibility(View.GONE);
                 handlePageLoadError(error);
             }
         });
     }
 
-    private void loadSearchResults() {
+    private void loadSearchResults(final long requestToken) {
         dataRepository.searchPaginated(currentSearchQuery, currentPage, pageSize, new DataRepository.PaginatedDataCallback() {
             @Override
             public void onSuccess(List<Entry> entries, boolean hasMorePages, int totalCount) {
+                if (requestToken != loadRequestCounter) {
+                    Log.d("FastPaginatedMainActivity", "Ignoring stale request " + requestToken);
+                    return;
+                }
                 findViewById(R.id.progress_bar).setVisibility(View.GONE);
                 updatePageData(entries, hasMorePages, totalCount);
                 Log.d("FastPaginatedMainActivity", "Search '" + currentSearchQuery + "' page " + currentPage + ": " + entries.size() + " results");
@@ -416,6 +450,10 @@ public class FastPaginatedMainActivity extends AppCompatActivity implements Pagi
 
             @Override
             public void onError(String error) {
+                if (requestToken != loadRequestCounter) {
+                    Log.d("FastPaginatedMainActivity", "Ignoring stale error " + requestToken);
+                    return;
+                }
                 findViewById(R.id.progress_bar).setVisibility(View.GONE);
                 handlePageLoadError(error);
             }
