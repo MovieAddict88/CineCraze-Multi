@@ -466,6 +466,11 @@ public class DataRepository {
 
                         List<String> remotePlaylistUrls = playlistIndex.getPlaylists();
 
+                        // Clean the list to remove any null or empty URLs caused by malformed JSON
+                        if (remotePlaylistUrls != null) {
+                            remotePlaylistUrls.removeIf(url -> url == null || url.trim().isEmpty());
+                        }
+
                         if (remoteVersion > localVersion) {
                             Log.d(TAG, "New version found. Remote: " + remoteVersion + ", Local: " + localVersion + ". Fetching all playlists.");
                             mainHandler.post(() -> fetchAllPlaylists(remotePlaylistUrls, remoteVersion, remotePlaylistUrls, callback));
@@ -488,25 +493,14 @@ public class DataRepository {
 
     private void fetchAllPlaylists(List<String> playlistUrls, int version, List<String> allRemoteUrls, FetchCallback finalCallback) {
         java.util.Set<String> uniqueEntryTitles = new java.util.HashSet<>();
-        executor.execute(() -> {
-            database.entryDao().deleteAll();
-            mainHandler.post(() -> fetchPlaylistAtIndex(0, playlistUrls, version, allRemoteUrls, uniqueEntryTitles, finalCallback));
-        });
+        List<EntryWithCategory> allEntriesToCache = new ArrayList<>();
+
+        mainHandler.post(() -> fetchPlaylistAtIndex(0, playlistUrls, version, allRemoteUrls, uniqueEntryTitles, allEntriesToCache, finalCallback));
     }
 
-    private void fetchPlaylistAtIndex(int index, List<String> playlistUrls, int version, List<String> allRemoteUrls, java.util.Set<String> uniqueEntryTitles, FetchCallback finalCallback) {
+    private void fetchPlaylistAtIndex(int index, List<String> playlistUrls, int version, List<String> allRemoteUrls, java.util.Set<String> uniqueEntryTitles, List<EntryWithCategory> allEntriesToCache, FetchCallback finalCallback) {
         if (index >= playlistUrls.size()) {
-            executor.execute(() -> {
-                CacheMetadataEntity metadata = database.cacheMetadataDao().getMetadata(CACHE_KEY_PLAYLIST);
-                if (metadata == null) {
-                    metadata = new CacheMetadataEntity();
-                    metadata.setKey(CACHE_KEY_PLAYLIST);
-                }
-                metadata.setLastUpdated(System.currentTimeMillis());
-                metadata.setDataVersion(String.valueOf(version));
-                metadata.setPlaylistUrls(gson.toJson(allRemoteUrls));
-                database.cacheMetadataDao().insert(metadata);
-                Log.d(TAG, "All playlists cached successfully. Version: " + version);
+            replaceCache(version, allRemoteUrls, allEntriesToCache, () -> {
                 mainHandler.post(() -> finalCallback.onSuccess(new ArrayList<>()));
             });
             return;
@@ -520,49 +514,60 @@ public class DataRepository {
             public void onResponse(Call<Playlist> call, Response<Playlist> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     Playlist playlist = response.body();
-                    List<EntryWithCategory> entriesToCache = new ArrayList<>();
                     if (playlist.getCategories() != null) {
                         for (Category category : playlist.getCategories()) {
                             if (category != null && category.getEntries() != null) {
                                 for (Entry entry : category.getEntries()) {
                                     if (entry != null && entry.getTitle() != null && !uniqueEntryTitles.contains(entry.getTitle())) {
-                                        entriesToCache.add(new EntryWithCategory(entry, category.getMainCategory()));
+                                        allEntriesToCache.add(new EntryWithCategory(entry, category.getMainCategory()));
                                         uniqueEntryTitles.add(entry.getTitle());
                                     }
                                 }
                             }
                         }
                     }
-                    cachePlaylistEntries(entriesToCache, () -> {
-                        fetchPlaylistAtIndex(index + 1, playlistUrls, version, allRemoteUrls, uniqueEntryTitles, finalCallback);
-                    });
                 } else {
                     Log.e(TAG, "API call failed for playlist " + url);
-                    fetchPlaylistAtIndex(index + 1, playlistUrls, version, allRemoteUrls, uniqueEntryTitles, finalCallback);
                 }
+                fetchPlaylistAtIndex(index + 1, playlistUrls, version, allRemoteUrls, uniqueEntryTitles, allEntriesToCache, finalCallback);
             }
 
             @Override
             public void onFailure(Call<Playlist> call, Throwable t) {
                 Log.e(TAG, "API call failed for playlist " + url + ": " + t.getMessage(), t);
-                fetchPlaylistAtIndex(index + 1, playlistUrls, version, allRemoteUrls, uniqueEntryTitles, finalCallback);
+                fetchPlaylistAtIndex(index + 1, playlistUrls, version, allRemoteUrls, uniqueEntryTitles, allEntriesToCache, finalCallback);
             }
         });
     }
 
-    private void cachePlaylistEntries(List<EntryWithCategory> entriesWithCategories, Runnable onComplete) {
+    private void replaceCache(int version, List<String> allRemoteUrls, List<EntryWithCategory> entriesWithCategories, Runnable onComplete) {
         executor.execute(() -> {
             try {
                 List<EntryEntity> entitiesToInsert = new ArrayList<>();
                 for (EntryWithCategory ewc : entriesWithCategories) {
                     entitiesToInsert.add(DatabaseUtils.entryToEntity(ewc.entry, ewc.mainCategory));
                 }
-                if (!entitiesToInsert.isEmpty()) {
-                    database.entryDao().insertAll(entitiesToInsert);
-                }
-                Log.d(TAG, "Cached " + entitiesToInsert.size() + " entries.");
+
+                database.runInTransaction(() -> {
+                    database.entryDao().deleteAll();
+                    if (!entitiesToInsert.isEmpty()) {
+                        database.entryDao().insertAll(entitiesToInsert);
+                    }
+
+                    CacheMetadataEntity metadata = database.cacheMetadataDao().getMetadata(CACHE_KEY_PLAYLIST);
+                    if (metadata == null) {
+                        metadata = new CacheMetadataEntity();
+                        metadata.setKey(CACHE_KEY_PLAYLIST);
+                    }
+                    metadata.setLastUpdated(System.currentTimeMillis());
+                    metadata.setDataVersion(String.valueOf(version));
+                    metadata.setPlaylistUrls(gson.toJson(allRemoteUrls));
+                    database.cacheMetadataDao().insert(metadata);
+                });
+
+                Log.d(TAG, "Cache replaced successfully. Version: " + version + ", Entries: " + entitiesToInsert.size());
             } catch (Exception e) {
-                Log.e(TAG, "Error caching playlist entries: " + e.getMessage(), e);
+                Log.e(TAG, "Error replacing cache: " + e.getMessage(), e);
             } finally {
                 mainHandler.post(onComplete);
             }

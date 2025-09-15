@@ -50,10 +50,14 @@ public class RetrofitClient {
                     .followSslRedirects(true)
                     .build();
 
+            com.google.gson.Gson gson = new com.google.gson.GsonBuilder()
+                    .setLenient()
+                    .create();
+
             retrofit = new Retrofit.Builder()
                     .baseUrl(BASE_URL)
                     .client(client)
-                    .addConverterFactory(GsonConverterFactory.create())
+                    .addConverterFactory(GsonConverterFactory.create(gson))
                     .build();
         }
         return retrofit;
